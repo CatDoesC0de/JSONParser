@@ -5,7 +5,6 @@
  * Part of catdoescode-computer-enhance
  */
 
-#define FROM_CONSTANT_STRING(String) {(u8*)String, sizeof(String) - 1}
 
 #include <cstdint>
 #include <stdlib.h>
@@ -23,6 +22,8 @@ struct buffer
     u8* Data;
     size_t Length;
 };
+
+#define FROM_CONSTANT_STRING(String) {(u8*)String, sizeof(String) - 1}
 
 buffer AllocateBuffer(size_t Size)
 {
@@ -98,8 +99,6 @@ struct lexer
     u64 LineBegin;
 };
 
-void Error(lexer& Lexer, const char* Stage, const char* Message);
-token NextToken(lexer& Lexer);
 u8 Consume(lexer& Lexer)
 {
     return IndexInBounds(Lexer.Source, Lexer.Index) ? Lexer.Source.Data[Lexer.Index++] : '\0';
