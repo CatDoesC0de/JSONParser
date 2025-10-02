@@ -8,3 +8,4 @@ https://www.computerenhance.com/p/welcome-to-the-performance-aware
 - Copy ```json_parser.hpp```
 - ```#include "json_parser.hpp"``` wherever you need it.
 - Call ParseJSON() with a filled out ```buffer``` struct
+- Call ```SearchKey(json_element*)``` to query the object.
