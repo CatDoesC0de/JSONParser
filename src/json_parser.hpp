@@ -5,10 +5,11 @@
  * Part of catdoescode-computer-enhance
  */
 
-
 #include <cstdint>
 #include <stdlib.h>
 #include <stdio.h>
+#include <memory.h>
+#include <math.h>
 
 typedef double f64;
 
@@ -50,6 +51,29 @@ void FreeBuffer(buffer& Buffer)
     }
 
     Buffer = {};
+}
+
+b32 Equals(buffer& b1, buffer& b2)
+{
+    if (b1.Length != b2.Length)
+    {
+        return false;
+    }
+
+    b32 Result = true;
+    if (b1.Data && b2.Data)
+    {
+        for (int i = 0; i < b1.Length; i++)
+        {
+            if (b1.Data[i] != b2.Data[i])
+            {
+                Result = false;
+                break;
+            }
+        }
+    }
+    
+    return Result;
 }
 
 b32 IndexInBounds(buffer& Buffer, u64 Index)
@@ -313,7 +337,7 @@ token NextToken(lexer& Lexer)
 
             default:
             {
-                LexerError(Lexer, "Unexpected character during tokenization.");
+                LexerError(Lexer, "Invalid token.");
             }
             break;
         }
@@ -385,16 +409,20 @@ json_element* ParseJSONObject(lexer& Lexer, token_type ClosingToken, b32 HasKeys
 
         token Comma = NextToken(Lexer);
 
-        if  (Comma.Type == token_type::token_comma)
+        if (Comma.Type == token_type::token_comma)
+        {
+            continue;
+        }
+        else if (Comma.Type == ClosingToken)
         {
             break;
         }
-
-        if (Comma.Type == ClosingToken)
+        else 
         {
-            ParserError(Lexer, "Reached unexpected end of object.");
+            ParserError(Lexer, "Unexpected token.");
             break;
         }
+        
     }
     return Head;
 }
@@ -432,7 +460,7 @@ json_element* ParseJSONElement(lexer& Lexer, buffer Key)
         else 
         {
             Valid = false;
-            ParserError(Lexer, "Unexpected token when parsing JSON.");
+            ParserError(Lexer, "Unexpected token.");
         }
 
         if (Valid)
@@ -458,3 +486,136 @@ json_element* ParseJSON(buffer InputJSON)
     return ResultElement;
 }
 
+b32 LexerConvertInteger(lexer& Lexer, f64& Result)
+{
+    f64 Converted = 0;
+    b32 CouldConvert = true;
+
+    if (IsJSONDigit(Peek(Lexer)))
+    {
+        u64 IntegerStart = Lexer.Index;
+        f64 Base10IntegerPlace = 0;
+
+        while (IsJSONDigit(Peek(Lexer)))
+        {
+            Base10IntegerPlace++;
+            Consume(Lexer);
+        }
+
+        Lexer.Index = IntegerStart;
+        
+        while (IsJSONDigit(Peek(Lexer)))
+        {
+            u8 Digit = Consume(Lexer);
+            f64 DigitConversion = (Digit - '0') * Base10IntegerPlace;
+            Converted += DigitConversion;
+            Base10IntegerPlace *= 0.1;
+        }
+    }
+    else 
+    {
+        CouldConvert = false;
+    }
+
+    Result = Converted;
+    return CouldConvert;
+}
+
+b32 ElementToF64(json_element* Element, f64& Result)
+{
+    b32 CouldConvert = true;
+
+    f64 Converted = 0;
+    f64 Sign = 1;
+
+    lexer Lexer = {};
+    Lexer.Index = 0;
+    Lexer.Source = Element->Value;
+
+    if (!IndexInBounds(Lexer.Source, Lexer.Index))
+    {
+        return false;
+    }
+
+    if (Peek(Lexer) == '-')
+    {
+        Sign = -1;
+        Consume(Lexer); // -
+    }
+        
+    if (!(IsJSONDigit(Peek(Lexer)) && LexerConvertInteger(Lexer, Converted)))
+    {
+        return false;
+    }
+
+    if (Peek(Lexer) == '.')
+    {
+        Consume(Lexer); // .
+        
+        f64 Fraction = 0;
+        f64 Place = 0.1;
+        while (IsJSONDigit(Peek(Lexer)))
+        {
+            u8 Digit = Consume(Lexer);
+            f64 DigitConversion = (Digit - '0') * Place;
+
+            Fraction += DigitConversion;
+            Place *= 0.1;
+        }
+        Converted += Fraction;
+    }
+
+    u8 ESymbol = Peek(Lexer);
+    if (ESymbol == 'e' || ESymbol == 'E')
+    {
+        Consume(Lexer); //E or e
+
+        u8 SignSymbol = Peek(Lexer);
+        f64 ExponentSign = 1;
+
+        if (SignSymbol == '+' || SignSymbol == '-')
+        {
+            ExponentSign = SignSymbol == '-' ? -1 : 1;
+            Consume(Lexer); // + or -
+        }
+
+        f64 Exponent = 0;
+
+        if (!LexerConvertInteger(Lexer, Exponent))
+        {
+            return false;
+        }
+
+        Converted *= pow(10, Exponent * ExponentSign);
+    }
+
+    Converted *= Sign;
+    Result = Converted;
+
+    return true;
+}
+
+json_element* SearchKey(json_element* Object, const char* Key)
+{
+    json_element* Result;
+
+    if (Object)   
+    {
+        buffer KeyLookup = {. Data = (u8*) Key, .Length = strlen(Key)};
+        for (json_element* Child = Object->Child; Child; Child = Child->Sibling)
+        {
+            if (Equals(KeyLookup, Child->Key))
+            {
+                Result = Child;
+                break;
+            }
+        }
+    }
+
+    return Result;
+}
+
+void PrintElementValue(json_element* Element)
+{
+    printf("%.*s", (u32) Element->Value.Length, (char*) Element->Value.Data);
+}
