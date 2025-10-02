@@ -11,11 +11,50 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "buffer.hpp"
-#include "buffer.cpp"
-
-typedef uint32_t u32;
 typedef double f64;
+
+typedef uint8_t u8;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef uint32_t b32;
+
+struct buffer 
+{
+    u8* Data;
+    size_t Length;
+};
+
+buffer AllocateBuffer(size_t Size)
+{
+    buffer Result;
+    Result.Data = (u8*) malloc(Size);
+
+    if (Result.Data)
+    {
+        Result.Length = Size;
+    }
+    else 
+    {
+        fprintf(stderr, "ERROR: Unable to allocate %lu bytes.\n", Size);
+    }
+
+    return Result;
+}
+
+void FreeBuffer(buffer& Buffer)
+{
+    if (Buffer.Data)
+    {
+        free(Buffer.Data);
+    }
+
+    Buffer = {};
+}
+
+b32 IndexInBounds(buffer& Buffer, u64 Index)
+{
+    return Index < Buffer.Length;
+}
 
 struct json_element
 {
