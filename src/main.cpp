@@ -13,13 +13,17 @@
 buffer ReadFileContents(char* FileName)
 {
     buffer Contents = {};
-    FILE* File = fopen(FileName, "r");
+    FILE* File = fopen(FileName, "rb");
 
     if (File)
     {
+#ifdef _WIN32
+        struct _stat64 Stat;
+        _stat64(FileName, &Stat);
+#else
         struct stat Stat;
         stat(FileName, &Stat);
-
+#endif
         Contents = AllocateBuffer(Stat.st_size);
 
         if (fread(Contents.Data, Stat.st_size, 1, File) != 1)
