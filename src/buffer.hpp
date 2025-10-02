@@ -7,8 +7,14 @@
  
 #pragma once
 
-#include "cat_common.hpp"
 #define FROM_CONSTANT_STRING(String) {(u8*)String, sizeof(String) - 1}
+
+#include <stdint.h>
+#include <cstddef>
+
+typedef uint8_t u8;
+typedef uint64_t u64;
+typedef uint32_t b32;
 
 struct buffer 
 {
